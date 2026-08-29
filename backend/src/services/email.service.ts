@@ -61,7 +61,7 @@ export class EmailService {
     });
 
     const transporter = createTransporter();
-    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || '"NOTTO VitalSync Portal" <no-reply@vitalsync.gov.in>';
+    const fromAddress = process.env.EMAIL_FROM || (process.env.SMTP_USER ? `"NOTTO VitalSync Portal" <${process.env.SMTP_USER}>` : '"NOTTO VitalSync Portal" <no-reply@vitalsync.gov.in>');
 
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9ff; padding: 40px 20px; color: #0b1c30;">
