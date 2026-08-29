@@ -1,6 +1,9 @@
 import { AuthSession } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = rawApiUrl.endsWith('/api') || rawApiUrl.endsWith('/api/') 
+  ? rawApiUrl 
+  : `${rawApiUrl.replace(/\/$/, '')}/api`;
 
 export const AUTH_TOKEN_KEY = 'organ_tx_auth_token';
 export const AUTH_SESSION_KEY = 'organ_tx_auth_session';
