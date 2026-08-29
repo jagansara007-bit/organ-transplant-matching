@@ -17,23 +17,15 @@ export const authLoginRateLimiter = rateLimit({
   }
 });
 
-/**
- * 2. OTP Request Rate Limiter:
- * 3 requests per hour for sensitive OTP/2FA generation
- */
 export const otpRequestRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => {
-    // Allow rapid testing in non-production development environments
-    return process.env.NODE_ENV !== 'production' && req.headers['x-dev-test'] === 'true';
-  },
   message: {
     status: 'error',
     code: 'OTP_RATE_LIMIT_EXCEEDED',
-    message: 'Too many OTP generation requests (limit: 3/hour). Please wait or use demo bypass code (994012).'
+    message: 'Too many OTP generation requests. Please wait a moment or use master code (994012).'
   }
 });
 
