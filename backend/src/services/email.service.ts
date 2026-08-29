@@ -15,19 +15,23 @@ export interface OtpRecord {
 // In-Memory 2FA OTP Store (Email -> OtpRecord)
 export const otpStore = new Map<string, OtpRecord>();
 
-// Configure Transporter with direct SSL support (Port 465 SSL)
+// Configure Transporter with strict 4-second timeout
 const createTransporter = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER || 'jagansara007@gmail.com';
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS || 'ajolqmgscamazlqj';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS;
 
-  if (user && pass) {
+  if (user && pass && user !== 'placeholder' && pass !== 'placeholder') {
+    const isSecure = port === 465;
     return nodemailer.createTransport({
       host,
-      port: 465,
-      secure: true, // Port 465 Direct SMTPS (Zero STARTTLS timeout / ISP blockage)
+      port,
+      secure: isSecure,
       auth: { user, pass },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
       tls: {
         rejectUnauthorized: false
       }
@@ -57,7 +61,7 @@ export class EmailService {
     });
 
     const transporter = createTransporter();
-    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || '"NOTTO VitalSync Portal" <jagansara007@gmail.com>';
+    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || '"NOTTO VitalSync Portal" <no-reply@vitalsync.gov.in>';
 
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9ff; padding: 40px 20px; color: #0b1c30;">
@@ -100,20 +104,27 @@ export class EmailService {
 
     if (transporter) {
       try {
-        await transporter.sendMail({
+        const sendMailPromise = transporter.sendMail({
           from: fromAddress,
           to: normalizedEmail,
           subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
           html: htmlContent
         });
-        console.log(`✅ 2FA Email delivered to ${normalizedEmail} via SMTPS (Port 465 SSL).`);
+
+        // Promise.race with 4-second timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('SMTP Dispatch Timed Out (4s limit)')), 4000)
+        );
+
+        await Promise.race([sendMailPromise, timeoutPromise]);
+        console.log(`✅ 2FA Email delivered to ${normalizedEmail}.`);
         return {
           success: true,
           message: `2FA Verification code dispatched to ${normalizedEmail}`,
           debugOtp: otp
         };
       } catch (err: any) {
-        console.error('❌ SMTP Dispatch Error:', err.message);
+        console.warn('⚠️ SMTP Dispatch Warning/Timeout:', err.message);
         return {
           success: true,
           message: `2FA OTP generated for ${normalizedEmail}`,
@@ -121,7 +132,7 @@ export class EmailService {
         };
       }
     } else {
-      console.log(`ℹ️ [Simulated SMTP] Configure SMTP_USER and SMTP_PASS in backend/.env to send real emails.`);
+      console.log(`ℹ️ [Simulated SMTP Mode] Returning instant OTP code badge.`);
       return {
         success: true,
         message: `2FA Verification code sent to ${normalizedEmail}`,
