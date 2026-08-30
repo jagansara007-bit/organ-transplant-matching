@@ -20,7 +20,7 @@ const createTransporter = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const user = process.env.SMTP_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS || process.env.GMAIL_PASSWORD;
 
   if (user && pass && user !== 'placeholder' && pass !== 'placeholder') {
     // If Gmail is targeted, use Nodemailer's direct 'gmail' service wrapper for optimal cloud delivery
