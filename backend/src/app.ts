@@ -12,6 +12,9 @@ import { generalRateLimiter } from './middleware/rateLimiter';
 
 const app: Express = express();
 
+// Trust reverse proxies (Render / Vercel / Cloudflare) for accurate rate limiting & X-Forwarded-For headers
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN === '*' || !process.env.CORS_ORIGIN ? true : process.env.CORS_ORIGIN,
