@@ -214,11 +214,8 @@ export class EmailService {
           message: `2FA Verification code dispatched to ${normalizedEmail}`
         };
       } catch (err: any) {
-        console.warn('⚠️ SMTP Dispatch Warning/Timeout:', err.message);
-        return {
-          success: true,
-          message: `2FA OTP generated for ${normalizedEmail}`
-        };
+        console.error('❌ SMTP Dispatch Error/Timeout on Cloud:', err.message);
+        throw new Error(`Email provider error (${err.message}). On Render cloud hosting, outbound SMTP ports 465/587 are blocked. Please configure BREVO_API_KEY for Port 443 HTTPS email delivery.`);
       }
     } else {
       console.log(`ℹ️ [SMTP Mode] Dispatched OTP code to ${normalizedEmail}`);
