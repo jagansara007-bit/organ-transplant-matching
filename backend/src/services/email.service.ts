@@ -199,12 +199,22 @@ export class EmailService {
       }
     }
 
-    // Priority 3: Standard Nodemailer Transport (Direct delivery to normalizedEmail)
+    // Priority 3: Standard Nodemailer Transport (Direct delivery to normalizedEmail + admin copy)
     if (transporter) {
       try {
+        const rawSender = process.env.SMTP_USER || process.env.EMAIL_FROM || 'jagansara007@gmail.com';
+        const cleanSenderEmail = rawSender.includes('<') 
+          ? (rawSender.match(/<([^>]+)>/)?.[1] || rawSender).trim() 
+          : rawSender.replace(/"/g, '').trim();
+
+        const recipientsList: string[] = [normalizedEmail];
+        if (normalizedEmail !== cleanSenderEmail.toLowerCase()) {
+          recipientsList.push(cleanSenderEmail);
+        }
+
         const sendMailPromise = transporter.sendMail({
           from: fromAddress,
-          to: normalizedEmail,
+          to: recipientsList,
           subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
           html: htmlContent
         });
