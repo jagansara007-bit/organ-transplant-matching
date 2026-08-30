@@ -113,6 +113,43 @@ export class EmailService {
 
     console.log(`\n🔐 [2FA EMAIL OTP DISPATCH] To: ${normalizedEmail} | OTP: ${otp} | Purpose: ${purpose} | Valid: 5 mins`);
 
+    // Priority 1: Resend HTTPS REST API (Port 443 - Never blocked by Render/Vercel cloud firewalls)
+    if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) {
+      try {
+        const apiKey = process.env.RESEND_API_KEY.trim();
+        const fromSender = process.env.RESEND_FROM || 'NOTTO VitalSync <onboarding@resend.dev>';
+        
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: fromSender,
+            to: [normalizedEmail],
+            subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
+            html: htmlContent
+          })
+        });
+
+        const resendData = await response.json() as any;
+        if (response.ok) {
+          console.log(`✅ 2FA Email delivered via Resend HTTPS API to ${normalizedEmail} (ID: ${resendData?.id})`);
+          return {
+            success: true,
+            message: `2FA Verification code dispatched to ${normalizedEmail}`,
+            debugOtp: otp
+          };
+        } else {
+          console.warn('⚠️ Resend HTTPS API Error:', resendData);
+        }
+      } catch (resendErr: any) {
+        console.warn('⚠️ Resend HTTPS API Request Exception:', resendErr.message);
+      }
+    }
+
+    // Priority 2: Standard Nodemailer Transport
     if (transporter) {
       try {
         const sendMailPromise = transporter.sendMail({
