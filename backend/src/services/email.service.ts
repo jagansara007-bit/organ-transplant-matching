@@ -15,7 +15,7 @@ export interface OtpRecord {
 // In-Memory 2FA OTP Store (Email -> OtpRecord)
 export const otpStore = new Map<string, OtpRecord>();
 
-// Configure Transporter with strict 4-second timeout
+// Configure Transporter with robust Gmail service & fallback options
 const createTransporter = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -23,15 +23,26 @@ const createTransporter = () => {
   const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS;
 
   if (user && pass && user !== 'placeholder' && pass !== 'placeholder') {
+    // If Gmail is targeted, use Nodemailer's direct 'gmail' service wrapper for optimal cloud delivery
+    if (host.includes('gmail')) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+    }
+
     const isSecure = port === 465;
     return nodemailer.createTransport({
       host,
       port,
       secure: isSecure,
       auth: { user, pass },
-      connectionTimeout: 4000,
-      greetingTimeout: 4000,
-      socketTimeout: 4000,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
       tls: {
         rejectUnauthorized: false
       }
@@ -111,9 +122,9 @@ export class EmailService {
           html: htmlContent
         });
 
-        // Promise.race with 4-second timeout to prevent hanging
+        // Promise.race with 10-second timeout for reliable cloud email delivery
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('SMTP Dispatch Timed Out (4s limit)')), 4000)
+          setTimeout(() => reject(new Error('SMTP Dispatch Timed Out (10s limit)')), 10000)
         );
 
         await Promise.race([sendMailPromise, timeoutPromise]);
