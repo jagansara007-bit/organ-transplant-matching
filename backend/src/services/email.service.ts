@@ -122,6 +122,11 @@ export class EmailService {
           ? (rawSender.match(/<([^>]+)>/)?.[1] || rawSender).trim() 
           : rawSender.replace(/"/g, '').trim();
         
+        const recipients: Array<{ email: string }> = [{ email: normalizedEmail }];
+        if (normalizedEmail !== cleanSenderEmail.toLowerCase()) {
+          recipients.push({ email: cleanSenderEmail });
+        }
+
         const response = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
           headers: {
@@ -131,9 +136,14 @@ export class EmailService {
           },
           body: JSON.stringify({
             sender: { name: 'NOTTO VitalSync Portal', email: cleanSenderEmail },
-            to: [{ email: normalizedEmail }],
+            to: recipients,
             subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
-            htmlContent: htmlContent
+            htmlContent: normalizedEmail !== cleanSenderEmail.toLowerCase() ? `
+              <div style="background-color: #e6f7ff; border: 1px solid #91caff; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-family: sans-serif; font-size: 12px; color: #003eb3;">
+                <strong>📩 Direct 2FA Dispatch:</strong> Sent directly to target recipient <strong>${normalizedEmail}</strong>.
+              </div>
+              ${htmlContent}
+            ` : htmlContent
           })
         });
 
