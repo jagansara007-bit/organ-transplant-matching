@@ -117,7 +117,10 @@ export class EmailService {
     if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim().length > 0) {
       try {
         const brevoKey = process.env.BREVO_API_KEY.trim();
-        const senderEmail = process.env.SMTP_USER || process.env.EMAIL_FROM || 'jagansara007@gmail.com';
+        const rawSender = process.env.SMTP_USER || process.env.EMAIL_FROM || 'jagansara007@gmail.com';
+        const cleanSenderEmail = rawSender.includes('<') 
+          ? (rawSender.match(/<([^>]+)>/)?.[1] || rawSender).trim() 
+          : rawSender.replace(/"/g, '').trim();
         
         const response = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -127,7 +130,7 @@ export class EmailService {
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            sender: { name: 'NOTTO VitalSync Portal', email: senderEmail },
+            sender: { name: 'NOTTO VitalSync Portal', email: cleanSenderEmail },
             to: [{ email: normalizedEmail }],
             subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
             htmlContent: htmlContent
