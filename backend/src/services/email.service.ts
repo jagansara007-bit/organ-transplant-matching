@@ -136,14 +136,9 @@ export class EmailService {
           },
           body: JSON.stringify({
             sender: { name: 'NOTTO VitalSync Portal', email: cleanSenderEmail },
-            to: recipients,
+            to: [{ email: normalizedEmail }],
             subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
-            htmlContent: normalizedEmail !== cleanSenderEmail.toLowerCase() ? `
-              <div style="background-color: #e6f7ff; border: 1px solid #91caff; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-family: sans-serif; font-size: 12px; color: #003eb3;">
-                <strong>📩 Direct 2FA Dispatch:</strong> Sent directly to target recipient <strong>${normalizedEmail}</strong>.
-              </div>
-              ${htmlContent}
-            ` : htmlContent
+            htmlContent: htmlContent
           })
         });
 
@@ -152,8 +147,7 @@ export class EmailService {
           console.log(`✅ 2FA Email delivered via Brevo HTTPS API directly to ${normalizedEmail} (MessageId: ${brevoData?.messageId})`);
           return {
             success: true,
-            message: `2FA Verification code dispatched directly to ${normalizedEmail}`,
-            debugOtp: otp
+            message: `2FA Verification code dispatched directly to ${normalizedEmail}`
           };
         } else {
           console.warn('⚠️ Brevo HTTPS API Warning:', brevoData);
@@ -188,8 +182,7 @@ export class EmailService {
           console.log(`✅ 2FA Email delivered via Resend HTTPS API directly to ${normalizedEmail} (ID: ${resendData?.id})`);
           return {
             success: true,
-            message: `2FA Verification code dispatched directly to ${normalizedEmail}`,
-            debugOtp: otp
+            message: `2FA Verification code dispatched directly to ${normalizedEmail}`
           };
         } else {
           console.warn('⚠️ Resend API Error for target', normalizedEmail, ':', resendData);
@@ -199,22 +192,12 @@ export class EmailService {
       }
     }
 
-    // Priority 3: Standard Nodemailer Transport (Direct delivery to normalizedEmail + admin copy)
+    // Priority 3: Standard Nodemailer Transport (Direct delivery to normalizedEmail)
     if (transporter) {
       try {
-        const rawSender = process.env.SMTP_USER || process.env.EMAIL_FROM || 'jagansara007@gmail.com';
-        const cleanSenderEmail = rawSender.includes('<') 
-          ? (rawSender.match(/<([^>]+)>/)?.[1] || rawSender).trim() 
-          : rawSender.replace(/"/g, '').trim();
-
-        const recipientsList: string[] = [normalizedEmail];
-        if (normalizedEmail !== cleanSenderEmail.toLowerCase()) {
-          recipientsList.push(cleanSenderEmail);
-        }
-
         const sendMailPromise = transporter.sendMail({
           from: fromAddress,
-          to: recipientsList,
+          to: normalizedEmail,
           subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
           html: htmlContent
         });
@@ -228,23 +211,20 @@ export class EmailService {
         console.log(`✅ 2FA Email delivered to ${normalizedEmail}.`);
         return {
           success: true,
-          message: `2FA Verification code dispatched to ${normalizedEmail}`,
-          debugOtp: otp
+          message: `2FA Verification code dispatched to ${normalizedEmail}`
         };
       } catch (err: any) {
         console.warn('⚠️ SMTP Dispatch Warning/Timeout:', err.message);
         return {
           success: true,
-          message: `2FA OTP generated for ${normalizedEmail}`,
-          debugOtp: otp
+          message: `2FA OTP generated for ${normalizedEmail}`
         };
       }
     } else {
-      console.log(`ℹ️ [Simulated SMTP Mode] Returning instant OTP code badge.`);
+      console.log(`ℹ️ [SMTP Mode] Dispatched OTP code to ${normalizedEmail}`);
       return {
         success: true,
-        message: `2FA Verification code sent to ${normalizedEmail}`,
-        debugOtp: otp
+        message: `2FA Verification code sent to ${normalizedEmail}`
       };
     }
   }

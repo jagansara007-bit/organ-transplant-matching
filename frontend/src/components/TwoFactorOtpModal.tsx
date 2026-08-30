@@ -30,24 +30,13 @@ export const TwoFactorOtpModal: React.FC<TwoFactorOtpModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    setDigits(['', '', '', '', '', '']);
+
     // Auto-request fresh OTP on modal open
-    apiClient.post<{ message: string; debugOtp?: string }>('/auth/request-otp', {
+    apiClient.post<{ message: string }>('/auth/request-otp', {
       email,
       purpose
-    }).then((res) => {
-      if (res.ok && res.data?.debugOtp) {
-        setDebugCode(res.data.debugOtp);
-        const codeDigits = res.data.debugOtp.split('');
-        if (codeDigits.length === 6) {
-          setDigits(codeDigits);
-        }
-      } else {
-        // Fallback auto-fill demo bypass code '994012'
-        setDigits(['9', '9', '4', '0', '1', '2']);
-      }
-    }).catch(() => {
-      setDigits(['9', '9', '4', '0', '1', '2']);
-    });
+    }).catch(() => {});
 
     setTimeLeftSeconds(300);
 
@@ -116,17 +105,14 @@ export const TwoFactorOtpModal: React.FC<TwoFactorOtpModalProps> = ({
   const handleResendOtp = async () => {
     setResending(true);
     try {
-      const res = await apiClient.post<{ message: string; debugOtp?: string }>('/auth/request-otp', {
+      const res = await apiClient.post<{ message: string }>('/auth/request-otp', {
         email,
         purpose
       });
 
       if (res.ok) {
         setTimeLeftSeconds(300);
-        const code = res.data?.debugOtp || '994012';
-        setDebugCode(code);
-        setDigits(code.split(''));
-        onNotification(`Fresh 2FA passcode (${code}) ready for authorization!`, 'success');
+        onNotification(`Fresh 2FA passcode dispatched to ${email}!`, 'success');
       } else {
         onNotification((res.data as any)?.message || 'Failed to dispatch 2FA code', 'error');
       }
@@ -165,12 +151,6 @@ export const TwoFactorOtpModal: React.FC<TwoFactorOtpModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickBypass = (bypassCode: string = '994012') => {
-    const newDigits = bypassCode.split('');
-    setDigits(newDigits);
-    handleSubmit(bypassCode);
   };
 
   return (
@@ -252,20 +232,6 @@ export const TwoFactorOtpModal: React.FC<TwoFactorOtpModalProps> = ({
               className="text-xs font-bold text-primary hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
             >
               {resending ? 'Sending...' : 'Resend Code'}
-            </button>
-          </div>
-
-          {/* Clinical Demo Bypass Pill */}
-          <div className="p-2.5 rounded-xl bg-primary-fixed/30 border border-primary/20 flex justify-between items-center text-xs">
-            <span className="text-on-surface">
-              Demo Code: <strong className="font-mono text-primary text-sm">994012</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => handleQuickBypass('994012')}
-              className="px-2.5 py-1 rounded-lg bg-primary text-white text-[11px] font-bold hover:bg-primary-container transition cursor-pointer shadow-xs"
-            >
-              Bypass (994012) ⚡
             </button>
           </div>
         </div>

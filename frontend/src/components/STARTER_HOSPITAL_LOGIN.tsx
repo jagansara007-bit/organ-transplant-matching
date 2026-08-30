@@ -60,7 +60,6 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [debugOtpCode, setDebugOtpCode] = useState<string | null>(null);
 
   // Password Login State
   const [email, setEmail] = useState('ananya.iyer@apollo.org');
@@ -74,12 +73,6 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
   const [regHospitalId, setRegHospitalId] = useState('22222222-2222-4222-a222-222222222222');
   const [regMedicalLicense, setRegMedicalLicense] = useState('');
 
-  // SMTP Settings Modal State
-  const [showSmtpModal, setShowSmtpModal] = useState(false);
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpPass, setSmtpPass] = useState('');
-  const [savingSmtp, setSavingSmtp] = useState(false);
-
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!otpEmail.trim()) {
@@ -89,18 +82,14 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
 
     setSendingOtp(true);
     try {
-      const res = await apiClient.post<{ status: string; message: string; debugOtp?: string }>('/auth/send-otp', {
+      const res = await apiClient.post<{ status: string; message: string }>('/auth/send-otp', {
         email: otpEmail.trim(),
         purpose: 'login'
       });
 
       if (res.ok && res.data) {
         setOtpSent(true);
-        if (res.data.debugOtp) {
-          setDebugOtpCode(res.data.debugOtp);
-          setOtpCode(res.data.debugOtp);
-        }
-        onNotification(`OTP code sent to ${otpEmail}! Check your inbox.`, 'success');
+        onNotification(`OTP verification code dispatched to ${otpEmail}! Check your inbox.`, 'success');
       } else {
         const errMsg = (res.data as any)?.message || 'Failed to send OTP email';
         onNotification(errMsg, 'error');
@@ -209,35 +198,6 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
     }
   };
 
-  const handleSaveSmtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!smtpUser.trim() || !smtpPass.trim()) {
-      onNotification('Please provide both your Gmail address and App Password', 'error');
-      return;
-    }
-
-    setSavingSmtp(true);
-    try {
-      const res = await apiClient.post('/auth/configure-smtp', {
-        smtpUser: smtpUser.trim(),
-        smtpPass: smtpPass.trim(),
-        smtpHost: 'smtp.gmail.com',
-        smtpPort: 587
-      });
-
-      if (res.ok) {
-        onNotification(`Personal email sender configured for ${smtpUser}! Live OTPs will now be delivered to your inbox.`, 'success');
-        setShowSmtpModal(false);
-      } else {
-        onNotification((res.data as any)?.message || 'Failed to configure SMTP', 'error');
-      }
-    } catch (err) {
-      onNotification('Network error configuring SMTP', 'error');
-    } finally {
-      setSavingSmtp(false);
-    }
-  };
-
   const selectDemoAccount = (account: DemoAccount) => {
     setEmail(account.email);
     setPassword('HospitalPass123!');
@@ -270,14 +230,6 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span>Indian Clinical Gateway • THOA 2014 Compliant</span>
           </div>
-
-          <button
-            onClick={() => setShowSmtpModal(true)}
-            className="mt-4 flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-primary bg-white/70 backdrop-blur-sm border border-outline-variant/40 px-3 py-2 rounded-xl transition-all shadow-xs cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base text-primary">mail</span>
-            <span>Configure Personal Email (SMTP)</span>
-          </button>
         </div>
 
         {/* Login Container (Right side on Desktop) */}
@@ -422,30 +374,6 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
                           className="input-mist w-full rounded-xl py-sm pl-xl pr-sm font-mono text-center tracking-[8px] text-xl font-bold text-primary placeholder:tracking-normal focus:ring-0"
                         />
                       </div>
-                    </div>
-
-                    {debugOtpCode && (
-                      <div className="p-2.5 rounded-lg bg-surface-container border border-primary/20 text-xs flex items-center justify-between text-on-surface">
-                        <span>Instant Verification Code: <strong className="font-mono text-primary text-sm">{debugOtpCode}</strong></span>
-                        <button
-                          type="button"
-                          onClick={() => setOtpCode(debugOtpCode)}
-                          className="px-2 py-0.5 rounded bg-primary text-white text-[11px] font-bold cursor-pointer"
-                        >
-                          Auto-Fill
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-outline px-1">
-                      <span>Didn&apos;t get email yet?</span>
-                      <button
-                        type="button"
-                        onClick={(e) => { setOtpCode('999999'); handleVerifyOtp(e, '999999'); }}
-                        className="text-primary font-bold hover:underline cursor-pointer"
-                      >
-                        Use Master Code: 999999 ⚡
-                      </button>
                     </div>
 
                     <button
@@ -641,73 +569,6 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
           </div>
         </div>
       </div>
-
-      {/* Personal SMTP / Gmail Configuration Modal */}
-      {showSmtpModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card max-w-md w-full rounded-2xl p-6 shadow-2xl animate-fadeIn border border-outline-variant/40">
-            <div className="flex justify-between items-center pb-4 border-b border-outline-variant/30">
-              <h3 className="font-headline-md text-lg font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">mark_email_read</span>
-                Personal Email (SMTP) Setup
-              </h3>
-              <button
-                onClick={() => setShowSmtpModal(false)}
-                className="p-1 rounded-lg hover:bg-surface-container text-outline cursor-pointer"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSmtp} className="py-4 space-y-4">
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Connect your personal Gmail to receive live OTP emails in your personal inbox. For Gmail, use an <strong>App Password</strong> (from Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords).
-              </p>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">Your Gmail / Sender Address</label>
-                <input
-                  type="email"
-                  placeholder="yourname@gmail.com"
-                  value={smtpUser}
-                  onChange={(e) => setSmtpUser(e.target.value)}
-                  required
-                  className="input-mist w-full rounded-xl p-3 text-xs text-on-surface"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">16-Character Gmail App Password</label>
-                <input
-                  type="password"
-                  placeholder="abcd efgh ijkl mnop"
-                  value={smtpPass}
-                  onChange={(e) => setSmtpPass(e.target.value)}
-                  required
-                  className="input-mist w-full rounded-xl p-3 text-xs text-on-surface font-mono"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSmtpModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-outline hover:bg-surface-container cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingSmtp}
-                  className="btn-primary-gradient px-5 py-2 rounded-xl text-xs font-bold cursor-pointer"
-                >
-                  {savingSmtp ? 'Saving...' : 'Save & Enable Real Email'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
