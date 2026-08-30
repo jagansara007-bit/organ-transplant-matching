@@ -1,6 +1,6 @@
 import { AuthSession } from '../types';
 
-const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://organ-transplant-matching.onrender.com/api';
 const API_BASE_URL = rawApiUrl.endsWith('/api') || rawApiUrl.endsWith('/api/') 
   ? rawApiUrl 
   : `${rawApiUrl.replace(/\/$/, '')}/api`;
