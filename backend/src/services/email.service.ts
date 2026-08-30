@@ -31,7 +31,7 @@ const createTransporter = () => {
         tls: {
           rejectUnauthorized: false
         }
-      });
+      } as any);
     }
 
     const isSecure = port === 465;
@@ -46,7 +46,7 @@ const createTransporter = () => {
       tls: {
         rejectUnauthorized: false
       }
-    });
+    } as any);
   }
 
   return null;
