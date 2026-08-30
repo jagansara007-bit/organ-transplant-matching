@@ -113,7 +113,7 @@ export class EmailService {
 
     console.log(`\n🔐 [2FA EMAIL OTP DISPATCH] To: ${normalizedEmail} | OTP: ${otp} | Purpose: ${purpose} | Valid: 5 mins`);
 
-    // Priority 0: Brevo (Sendinblue) HTTPS REST API (Port 443 - Delivers to ANY recipient email worldwide with zero domain locks)
+    // Priority 1: Brevo (Sendinblue) HTTPS REST API (Port 443 - Delivers directly to ANY recipient email address worldwide with zero domain locks)
     if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim().length > 0) {
       try {
         const brevoKey = process.env.BREVO_API_KEY.trim();
@@ -143,22 +143,20 @@ export class EmailService {
             debugOtp: otp
           };
         } else {
-          console.warn('⚠️ Brevo HTTPS API Error:', brevoData);
+          console.warn('⚠️ Brevo HTTPS API Warning:', brevoData);
         }
       } catch (brevoErr: any) {
         console.warn('⚠️ Brevo HTTPS API Exception:', brevoErr.message);
       }
     }
 
-    // Priority 1: Resend HTTPS REST API (Port 443 - Never blocked by Render/Vercel cloud firewalls)
+    // Priority 2: Resend HTTPS REST API (Strict direct delivery to target recipient)
     if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) {
       try {
         const apiKey = process.env.RESEND_API_KEY.trim();
         const fromSender = process.env.RESEND_FROM || 'NOTTO VitalSync <onboarding@resend.dev>';
-        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'jagansara007@gmail.com';
         
-        // Attempt sending directly to normalizedEmail first
-        let response = await fetch('https://api.resend.com/emails', {
+        const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -172,52 +170,23 @@ export class EmailService {
           })
         });
 
-        let resendData = await response.json() as any;
-
-        // If Resend testing domain restriction blocks sending to external emails, fallback to admin/owner inbox
-        if (!response.ok && (resendData?.name === 'validation_error' || resendData?.message?.includes('testing domain'))) {
-          console.warn(`⚠️ Resend testing domain restriction for ${normalizedEmail}. Routing email copy to ${adminEmail}...`);
-          
-          const fallbackHtml = `
-            <div style="background-color: #fff8e6; border: 1px solid #ffd591; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif; font-size: 13px; color: #873800;">
-              <strong>ℹ️ Testing Mode Target Route:</strong> This 2FA passcode was requested for <strong>${normalizedEmail}</strong> and routed to your inbox.
-            </div>
-            ${htmlContent}
-          `;
-
-          response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              from: fromSender,
-              to: [adminEmail],
-              subject: `[Target: ${normalizedEmail}] 🔐 NOTTO VitalSync 2FA Passcode: ${otp}`,
-              html: fallbackHtml
-            })
-          });
-
-          resendData = await response.json() as any;
-        }
-
+        const resendData = await response.json() as any;
         if (response.ok) {
-          console.log(`✅ 2FA Email delivered via Resend HTTPS API (ID: ${resendData?.id})`);
+          console.log(`✅ 2FA Email delivered via Resend HTTPS API directly to ${normalizedEmail} (ID: ${resendData?.id})`);
           return {
             success: true,
-            message: `2FA Verification code dispatched to ${normalizedEmail}`,
+            message: `2FA Verification code dispatched directly to ${normalizedEmail}`,
             debugOtp: otp
           };
         } else {
-          console.warn('⚠️ Resend HTTPS API Error:', resendData);
+          console.warn('⚠️ Resend API Error for target', normalizedEmail, ':', resendData);
         }
       } catch (resendErr: any) {
         console.warn('⚠️ Resend HTTPS API Request Exception:', resendErr.message);
       }
     }
 
-    // Priority 2: Standard Nodemailer Transport
+    // Priority 3: Standard Nodemailer Transport (Direct delivery to normalizedEmail)
     if (transporter) {
       try {
         const sendMailPromise = transporter.sendMail({
