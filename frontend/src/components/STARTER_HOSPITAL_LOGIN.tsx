@@ -98,6 +98,7 @@ export const StarterHospitalLogin: React.FC<StarterHospitalLoginProps> = ({ onLo
         setOtpSent(true);
         if (res.data.debugOtp) {
           setDebugOtpCode(res.data.debugOtp);
+          setOtpCode(res.data.debugOtp);
         }
         onNotification(`OTP code sent to ${otpEmail}! Check your inbox.`, 'success');
       } else {
