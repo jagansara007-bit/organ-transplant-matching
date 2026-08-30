@@ -113,6 +113,43 @@ export class EmailService {
 
     console.log(`\n🔐 [2FA EMAIL OTP DISPATCH] To: ${normalizedEmail} | OTP: ${otp} | Purpose: ${purpose} | Valid: 5 mins`);
 
+    // Priority 0: Brevo (Sendinblue) HTTPS REST API (Port 443 - Delivers to ANY recipient email worldwide with zero domain locks)
+    if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim().length > 0) {
+      try {
+        const brevoKey = process.env.BREVO_API_KEY.trim();
+        const senderEmail = process.env.SMTP_USER || process.env.EMAIL_FROM || 'jagansara007@gmail.com';
+        
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': brevoKey,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: { name: 'NOTTO VitalSync Portal', email: senderEmail },
+            to: [{ email: normalizedEmail }],
+            subject: `🔐 NOTTO VitalSync 2FA Passcode: ${otp} (${purpose})`,
+            htmlContent: htmlContent
+          })
+        });
+
+        const brevoData = await response.json() as any;
+        if (response.ok) {
+          console.log(`✅ 2FA Email delivered via Brevo HTTPS API directly to ${normalizedEmail} (MessageId: ${brevoData?.messageId})`);
+          return {
+            success: true,
+            message: `2FA Verification code dispatched directly to ${normalizedEmail}`,
+            debugOtp: otp
+          };
+        } else {
+          console.warn('⚠️ Brevo HTTPS API Error:', brevoData);
+        }
+      } catch (brevoErr: any) {
+        console.warn('⚠️ Brevo HTTPS API Exception:', brevoErr.message);
+      }
+    }
+
     // Priority 1: Resend HTTPS REST API (Port 443 - Never blocked by Render/Vercel cloud firewalls)
     if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) {
       try {
